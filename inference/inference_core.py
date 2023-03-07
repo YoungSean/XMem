@@ -46,13 +46,16 @@ class InferenceCore:
         image, self.pad = pad_divide_by(image, 16)
         image = image.unsqueeze(0) # add the batch dimension
 
-        is_mem_frame = ((self.curr_ti-self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
-        need_segment = (self.curr_ti > 0) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
-        is_deep_update = (
+        few_shot_size = 2
+        # is_mem_frame = ((self.curr_ti - self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
+        is_mem_frame = (self.curr_ti < few_shot_size) or ((self.curr_ti-self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
+        # need_segment = (self.curr_ti > 0) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
+        need_segment = (self.curr_ti >= few_shot_size) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
+        is_deep_update = (self.curr_ti < few_shot_size) or  (
             (self.deep_update_sync and is_mem_frame) or  # synchronized
             (not self.deep_update_sync and self.curr_ti-self.last_deep_update_ti >= self.deep_update_every) # no-sync
         ) and (not end)
-        is_normal_update = (not self.deep_update_sync or not is_deep_update) and (not end)
+        is_normal_update = (self.curr_ti >= few_shot_size) and (not self.deep_update_sync or not is_deep_update) and (not end)
 
         key, shrinkage, selection, f16, f8, f4 = self.network.encode_key(image, 
                                                     need_ek=(self.enable_long_term or need_segment), 
@@ -94,6 +97,7 @@ class InferenceCore:
 
         # save as memory if needed
         if is_mem_frame:
+            print('add working memory')
             value, hidden = self.network.encode_value(image, f16, self.memory.get_hidden(), 
                                     pred_prob_with_bg[1:].unsqueeze(0), is_deep_update=is_deep_update)
             self.memory.add_memory(key, shrinkage, value, self.all_labels, 

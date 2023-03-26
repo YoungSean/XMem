@@ -12,6 +12,19 @@ from dataset.range_transform import im_normalization, im_mean
 from dataset.tps import random_tps_warp
 from dataset.reseed import reseed
 
+import torch
+import matplotlib.pyplot as plt
+
+def vis_torch_tensor(x):
+    # X: random tensor of size (3, H, W)
+    # Transpose the tensor to (32, 32, 3) and convert to a NumPy array
+    x = x.permute(1, 2, 0).numpy()
+
+
+    # Show the image using matplotlib
+    plt.imshow(x)
+    plt.show()
+
 
 class StaticTransformDataset(Dataset):
     """
@@ -91,6 +104,11 @@ class StaticTransformDataset(Dataset):
         im = Image.open(self.im_list[idx]).convert('RGB')
         gt = Image.open(self.im_list[idx][:-3]+'png').convert('L')
 
+        plt.imshow(im)
+        plt.show()
+        plt.imshow(gt)
+        plt.show()
+
         sequence_seed = np.random.randint(2147483647)
 
         images = []
@@ -117,6 +135,9 @@ class StaticTransformDataset(Dataset):
             this_im = self.final_im_transform(this_im)
             this_gt = self.final_gt_transform(this_gt)
 
+            # vis_torch_tensor(this_im)
+            # vis_torch_tensor(this_gt)
+
             images.append(this_im)
             masks.append(this_gt)
 
@@ -139,8 +160,11 @@ class StaticTransformDataset(Dataset):
             else:
                 merged_images = merged_images*(1-masks) + images*masks
             merged_masks[masks[:,0]>0.5] = (i+1)
+            print('unique numbers:', np.unique(merged_masks))
 
         masks = merged_masks
+        my_masks = torch.from_numpy(merged_masks).float()
+        vis_torch_tensor(my_masks)
 
         labels = np.unique(masks[0])
         # Remove background
@@ -155,6 +179,9 @@ class StaticTransformDataset(Dataset):
             cls_gt[this_mask] = i+1
             first_frame_gt[0,i] = (this_mask[0])
         cls_gt = np.expand_dims(cls_gt, 1)
+        print('cls_gt shape:', cls_gt.shape)
+        plt.imshow(cls_gt[0,0])
+        plt.show()
 
         info = {}
         info['name'] = self.im_list[idx]
@@ -165,9 +192,9 @@ class StaticTransformDataset(Dataset):
         selector = torch.FloatTensor(selector)
 
         data = {
-            'rgb': merged_images,
-            'first_frame_gt': first_frame_gt,
-            'cls_gt': cls_gt,
+            'rgb': merged_images, # (T, C, H, W) (3, 3, 384, 384)
+            'first_frame_gt': first_frame_gt, # (1, 1, H, W) (1, 1, 384, 384)
+            'cls_gt': cls_gt, # (T, 1, H, W) (3, 1, 384, 384)
             'selector': selector,
             'info': info
         }
@@ -177,3 +204,4 @@ class StaticTransformDataset(Dataset):
 
     def __len__(self):
         return len(self.im_list)
+

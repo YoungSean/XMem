@@ -165,10 +165,14 @@ class FewSOLDataset(Dataset):
         support_imgs = []
         support_masks = []
 
-        for j in range(n):
-            obj_name = obj_names[j]
-            scene_folder = os.path.join(obj_dir, obj_name)
-            color, depth, label, meta = load_object_rgbd(scene_folder, 0)
+        cur_object_idx = np.random.randint(n)
+        cur_scene['query_mask'] = query_masks[cur_object_idx]
+        obj_name = obj_names[cur_object_idx]
+        scene_folder = os.path.join(obj_dir, obj_name)
+
+        num_obj_imgs = np.random.randint(1,10)
+        for i in range(num_obj_imgs):
+            color, depth, label, meta = load_object_rgbd(scene_folder, i)
             # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 1)
             # plt.imshow(color)
             # plt.imshow(label)
@@ -184,18 +188,18 @@ class FewSOLDataset(Dataset):
             support_imgs.append(sub_images[0])
             support_masks.append(sub_masks[0])
             # vis_color_and_mask(sub_images[0], sub_masks[0])
-
-            color, depth, label, meta = load_object_rgbd(scene_folder, 1)
-            sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-            support_imgs.append(sub_images[0])
-            support_masks.append(sub_masks[0])
-            # vis_color_and_mask(sub_images[0], sub_masks[0])
-
-            color, depth, label, meta = load_object_rgbd(scene_folder, 2)
-            sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-            support_imgs.append(sub_images[0])
-            support_masks.append(sub_masks[0])
-            # vis_color_and_mask(sub_images[0], sub_masks[0])
+            #
+            # color, depth, label, meta = load_object_rgbd(scene_folder, 1)
+            # sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
+            # support_imgs.append(sub_images[0])
+            # support_masks.append(sub_masks[0])
+            # # vis_color_and_mask(sub_images[0], sub_masks[0])
+            #
+            # color, depth, label, meta = load_object_rgbd(scene_folder, 2)
+            # sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
+            # support_imgs.append(sub_images[0])
+            # support_masks.append(sub_masks[0])
+            # # vis_color_and_mask(sub_images[0], sub_masks[0])
 
         cur_scene['support_imgs'] = support_imgs
         cur_scene['support_masks'] = support_masks
@@ -214,16 +218,16 @@ class FewSOLDataset(Dataset):
         support_imgs = cur_scene['support_imgs']
         support_masks = cur_scene['support_masks']
         query_img = cur_scene['query_img']
-        query_mask = cur_scene['query_masks']
+        query_mask = cur_scene['query_mask']
 
         num_objects = len(query_mask)  # number of objects in the query image, each object has a mask
         # we just need one object
-        cur_object_idx = np.random.randint(num_objects)
+        # cur_object_idx = np.random.randint(num_objects)
         cur_sample = {}
         cur_sample['query_img'] = query_img
-        cur_sample['object_img'] = support_imgs[3*cur_object_idx:3*cur_object_idx+3]
-        cur_sample['object_mask'] = support_masks[3*cur_object_idx:3*cur_object_idx+3]
-        cur_sample['query_mask'] = query_mask[cur_object_idx]
+        cur_sample['object_img'] = support_imgs #[3*cur_object_idx:3*cur_object_idx+3]
+        cur_sample['object_mask'] = support_masks #[3*cur_object_idx:3*cur_object_idx+3]
+        cur_sample['query_mask'] = query_mask #[cur_object_idx]
 
         info = {}
         info['name'] = 0  # to be changed
@@ -249,7 +253,7 @@ class FewSOLDataset(Dataset):
         vis_color_and_mask(torch.permute(merged_images[0], (1, 2, 0)), cls_gt[0,0])
         vis_color_and_mask(torch.permute(merged_images[1], (1, 2, 0)), cls_gt[1, 0])
         vis_color_and_mask(torch.permute(merged_images[2], (1, 2, 0)), cls_gt[2, 0])
-        vis_color_and_mask(torch.permute(merged_images[3], (1, 2, 0)), cls_gt[3, 0])
+        vis_color_and_mask(torch.permute(merged_images[-1], (1, 2, 0)), cls_gt[-1, 0])
         print("the shape of merged_images: ", merged_images.shape)
 
         data = {
@@ -273,7 +277,7 @@ class FewSOLDataset(Dataset):
 if __name__ == '__main__':
     f_dataset = FewSOLDataset()
     # print(f_dataset.scenes[0]['support_imgs'][0].shape)
-    f_dataset[0]
+    f_dataset[10]
 
     # root_dir = '../FewSOL'
     # scene_dir = root_dir + '/google_scenes/train'

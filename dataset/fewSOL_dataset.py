@@ -8,7 +8,7 @@ import scipy.io
 import numpy as np
 from simulation_util import imread_indexed
 from matplotlib import pyplot as plt
-
+import random
 
 
 import torch
@@ -22,8 +22,8 @@ from dataset.range_transform import im_normalization, im_mean
 from dataset.tps import random_tps_warp
 from dataset.reseed import reseed
 
-
-
+# random.seed(0)  # make sure the order is the same
+# np.random.seed(0)
 def load_object_rgbd(scene_folder, i):
     color_file = os.path.join(scene_folder, '%06d-color.jpg' % i)
     color = cv2.imread(color_file)
@@ -171,7 +171,14 @@ class FewSOLDataset(Dataset):
         scene_folder = os.path.join(obj_dir, obj_name)
 
         num_obj_imgs = np.random.randint(1,10)
-        for i in range(num_obj_imgs):
+        # Define a list of numbers
+        num_list = list(range(0, 9))
+        print("num_list: ", num_list)
+
+        # Randomly pick 5 distinct numbers from the list
+        random_numbers = random.sample(num_list, num_obj_imgs)
+        print("random_numbers: ", random_numbers)
+        for i in random_numbers:
             color, depth, label, meta = load_object_rgbd(scene_folder, i)
             # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 1)
             # plt.imshow(color)
@@ -251,8 +258,8 @@ class FewSOLDataset(Dataset):
         print("the values of cls_gt: ", torch.unique(cls_gt))
         print("the shape of cls_gt: ", cls_gt.shape)
         vis_color_and_mask(torch.permute(merged_images[0], (1, 2, 0)), cls_gt[0,0])
-        vis_color_and_mask(torch.permute(merged_images[1], (1, 2, 0)), cls_gt[1, 0])
-        vis_color_and_mask(torch.permute(merged_images[2], (1, 2, 0)), cls_gt[2, 0])
+        # vis_color_and_mask(torch.permute(merged_images[1], (1, 2, 0)), cls_gt[1, 0])
+        # vis_color_and_mask(torch.permute(merged_images[2], (1, 2, 0)), cls_gt[2, 0])
         vis_color_and_mask(torch.permute(merged_images[-1], (1, 2, 0)), cls_gt[-1, 0])
         print("the shape of merged_images: ", merged_images.shape)
 
@@ -277,7 +284,7 @@ class FewSOLDataset(Dataset):
 if __name__ == '__main__':
     f_dataset = FewSOLDataset()
     # print(f_dataset.scenes[0]['support_imgs'][0].shape)
-    f_dataset[10]
+    f_dataset[1]
 
     # root_dir = '../FewSOL'
     # scene_dir = root_dir + '/google_scenes/train'

@@ -69,17 +69,22 @@ class XMemTrainer:
         num_objects = first_frame_gt.shape[2]
         selector = data['selector'].unsqueeze(2).unsqueeze(2)
 
+        self.num_frames = b
+
         with torch.cuda.amp.autocast(enabled=self.config['amp']):
-            # image features never change, compute once
-            key, shrinkage, selection, f16, f8, f4 = self.XMem('encode_key', frames)
+            for ti in range(0, self.num_frames):
+                # use b-1 frames as reference
+                if ti < b-1: #self.num_ref_frames:
+                    # image features never change, compute once
+                    key, shrinkage, selection, f16, f8, f4 = self.XMem('encode_key', frames)
 
-            filler_one = torch.zeros(1, dtype=torch.int64)
-            hidden = torch.zeros((b, num_objects, self.config['hidden_dim'], *key.shape[-2:]))
-            v16, hidden = self.XMem('encode_value', frames[:,0], f16[:,0], hidden, first_frame_gt[:,0])
-            values = v16.unsqueeze(3) # add the time dimension
+                    filler_one = torch.zeros(1, dtype=torch.int64)  # tensor([0])
+                    hidden = torch.zeros((b, num_objects, self.config['hidden_dim'], *key.shape[-2:]))
+                    v16, hidden = self.XMem('encode_value', frames[:,0], f16[:,0], hidden, first_frame_gt[ti,0])
+                    values = v16.unsqueeze(3) # add the time dimension
 
-            for ti in range(1, self.num_frames):
-                if ti <= self.num_ref_frames:
+                    # to do
+                    # not sure this part is correct
                     ref_values = values
                     ref_keys = key[:,:,:ti]
                     ref_shrinkage = shrinkage[:,:,:ti] if shrinkage is not None else None

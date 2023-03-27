@@ -265,7 +265,8 @@ class FewSOLDataset(Dataset):
 
         data = {
             'rgb': merged_images,  # (T, C, H, W) (3, 3, 384, 384)
-            'first_frame_gt': first_frame_gt,  # (1, 1, H, W) (1, 1, 384, 384)
+            'first_frame_gt': cls_gt[:-1], # get rid of the last frame, (T-1, 1, H, W) (2, 1, 384, 384)
+            #first_frame_gt,  # (1, 1, H, W) (1, 1, 384, 384)
             'cls_gt': cls_gt,  # (T, 1, H, W) (3, 1, 384, 384)
             'selector': selector,
             'info': info

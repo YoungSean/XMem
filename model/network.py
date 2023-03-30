@@ -44,7 +44,7 @@ class XMem(nn.Module):
             need_reshape = True
             b, t = frame.shape[:2]
             # flatten so that we can feed them into a 2D CNN
-            frame = frame.flatten(start_dim=0, end_dim=1)
+            frame = frame.flatten(start_dim=0, end_dim=1) # b*t*c*h*w -> (b*t)*c*h*w
         elif len(frame.shape) == 4:
             # shape is b*c*h*w
             need_reshape = False

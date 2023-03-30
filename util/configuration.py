@@ -32,8 +32,8 @@ class Configuration():
         Batch sizes are effective -- you don't have to scale them when you scale the number processes
         """
         # Stage 0, static images
-        parser.add_argument('--s0_batch_size', default=16, type=int)
-        parser.add_argument('--s0_iterations', default=150000, type=int)
+        parser.add_argument('--s0_batch_size', default=4, type=int)  #16
+        parser.add_argument('--s0_iterations', default=112, type=int)  # 150000
         parser.add_argument('--s0_finetune', default=0, type=int)
         parser.add_argument('--s0_steps', nargs="*", default=[], type=int)
         parser.add_argument('--s0_lr', help='Initial learning rate', default=1e-5, type=float)
@@ -86,8 +86,8 @@ class Configuration():
         parser.add_argument('--load_checkpoint', help='Path to the checkpoint file, including network, optimizer and such')
 
         # Logging information
-        parser.add_argument('--log_text_interval', default=100, type=int)
-        parser.add_argument('--log_image_interval', default=1000, type=int)
+        parser.add_argument('--log_text_interval', default=100, type=int) # 100
+        parser.add_argument('--log_image_interval', default=200, type=int)  #1000
         parser.add_argument('--save_network_interval', default=25000, type=int)
         parser.add_argument('--save_checkpoint_interval', default=50000, type=int)
         parser.add_argument('--exp_id', help='Experiment UNIQUE id, use NULL to disable logging to tensorboard', default='NULL')

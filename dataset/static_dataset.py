@@ -104,10 +104,10 @@ class StaticTransformDataset(Dataset):
         im = Image.open(self.im_list[idx]).convert('RGB')
         gt = Image.open(self.im_list[idx][:-3]+'png').convert('L')
 
-        plt.imshow(im)
-        plt.show()
-        plt.imshow(gt)
-        plt.show()
+        # plt.imshow(im)
+        # plt.show()
+        # plt.imshow(gt)
+        # plt.show()
 
         sequence_seed = np.random.randint(2147483647)
 
@@ -160,11 +160,11 @@ class StaticTransformDataset(Dataset):
             else:
                 merged_images = merged_images*(1-masks) + images*masks
             merged_masks[masks[:,0]>0.5] = (i+1)
-            print('unique numbers:', np.unique(merged_masks))
+            # print('unique numbers:', np.unique(merged_masks))
 
         masks = merged_masks
-        my_masks = torch.from_numpy(merged_masks).float()
-        vis_torch_tensor(my_masks)
+        # my_masks = torch.from_numpy(merged_masks).float()
+        # vis_torch_tensor(my_masks)
 
         labels = np.unique(masks[0])
         # Remove background
@@ -179,9 +179,9 @@ class StaticTransformDataset(Dataset):
             cls_gt[this_mask] = i+1
             first_frame_gt[0,i] = (this_mask[0])
         cls_gt = np.expand_dims(cls_gt, 1)
-        print('cls_gt shape:', cls_gt.shape)
-        plt.imshow(cls_gt[0,0])
-        plt.show()
+        # print('cls_gt shape:', cls_gt.shape)
+        # plt.imshow(cls_gt[0,0])
+        # plt.show()
 
         info = {}
         info['name'] = self.im_list[idx]

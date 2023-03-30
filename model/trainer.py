@@ -63,31 +63,48 @@ class XMemTrainer:
 
         out = {}
         frames = data['rgb']
+        print("frame shape", frames.shape)
         first_frame_gt = data['first_frame_gt'].float()
         b = frames.shape[0]
+        print("b shape", b)
+        print("num frames", self.num_frames)
         num_filled_objects = [o.item() for o in data['info']['num_objects']]
         num_objects = first_frame_gt.shape[2]
         selector = data['selector'].unsqueeze(2).unsqueeze(2)
 
-        self.num_frames = b
-
         with torch.cuda.amp.autocast(enabled=self.config['amp']):
-            for ti in range(0, self.num_frames):
-                # use b-1 frames as reference
-                if ti < b-1: #self.num_ref_frames:
-                    # image features never change, compute once
-                    key, shrinkage, selection, f16, f8, f4 = self.XMem('encode_key', frames)
+            # image features never change, compute once
+            key, shrinkage, selection, f16, f8, f4 = self.XMem('encode_key', frames)
+            print("f16", f16.shape)  # shape is (batch, time/frames, channel, height, width)  16 and 4 are btach sizes
 
-                    filler_one = torch.zeros(1, dtype=torch.int64)  # tensor([0])
-                    hidden = torch.zeros((b, num_objects, self.config['hidden_dim'], *key.shape[-2:]))
-                    v16, hidden = self.XMem('encode_value', frames[:,0], f16[:,0], hidden, first_frame_gt[ti,0])
-                    values = v16.unsqueeze(3) # add the time dimension
+            filler_one = torch.zeros(1, dtype=torch.int64)
+            hidden = torch.zeros((b, num_objects, self.config['hidden_dim'], *key.shape[-2:]))
+            # print("hidden shape", hidden.shape)  # torch.Size([16, 1, 64, 24, 24])
+            # print("first frame gt shape", first_frame_gt.shape)  #  torch.Size([16, 1, 1, 384, 384])
+            v16, hidden = self.XMem('encode_value', frames[:,0], f16[:,0], hidden, first_frame_gt[:,0])  # we directly use the first frame as the masks
+            # print("f16 shape", f16.shape) # f16 torch.Size([4, 3, 1024, 24, 24])
+            # print("first_frame_gt[:,0].shape", first_frame_gt[:,0].shape) # torch.Size([4, 1, 384, 384])
 
-                    # to do
-                    # not sure this part is correct
+            print("v16 shape", v16.shape) # torch.Size([16, 1, 512, 24, 24])
+            # print("v16 shape", v16.shape) # torch.Size([16, 1, 512, 24, 24])
+            values = v16.unsqueeze(3) # add the time dimension  # torch.Size([16, 64, 3, 24, 24])
+            # print("values shape", values.shape) # torch.Size([4, 1, 512, 1, 24, 24])
+
+            for ti in range(1, self.num_frames):
+                x = 0
+                if ti <= self.num_ref_frames:
                     ref_values = values
                     ref_keys = key[:,:,:ti]
                     ref_shrinkage = shrinkage[:,:,:ti] if shrinkage is not None else None
+
+                    x+=1
+                    # if x==2:
+                        # print("key shape", key.shape) # torch.Size([16, 64, 3, 24, 24])
+                        # print("ref_keys shape", ref_keys.shape)  # torch.Size([16, 64, 1, 24, 24])
+                        # print("ref values shape", ref_values.shape) # torch.Size([16, 1, 512, 1, 24, 24])
+                        # x += 1
+
+
                 else:
                     # pick num_ref_frames random frames
                     # this is not very efficient but I think we would 
@@ -105,17 +122,22 @@ class XMemTrainer:
                         shrinkage[bi, :, indices[bi]] for bi in range(b)
                     ], 0) if shrinkage is not None else None
 
+
                 # Segment frame ti
                 memory_readout = self.XMem('read_memory', key[:,:,ti], selection[:,:,ti] if selection is not None else None, 
                                         ref_keys, ref_shrinkage, ref_values)
+                # query_key, query_selection, memory_key,memory_shrinkage, memory_value
                 hidden, logits, masks = self.XMem('segment', (f16[:,ti], f8[:,ti], f4[:,ti]), memory_readout, 
                         hidden, selector, h_out=(ti < (self.num_frames-1)))
 
                 # No need to encode the last frame
                 if ti < (self.num_frames-1):
                     is_deep_update = np.random.rand() < self.deep_update_prob
-                    v16, hidden = self.XMem('encode_value', frames[:,ti], f16[:,ti], hidden, masks, is_deep_update=is_deep_update)
+                    v16, hidden = self.XMem('encode_value', frames[:,ti], f16[:,ti], hidden, masks, is_deep_update=is_deep_update)  # here we use the masks predicted by the model
                     values = torch.cat([values, v16.unsqueeze(3)], 3)
+                    # print("ti", ti) # ti 1
+                    # print("ti and values shape", values.shape) # ti and values shape torch.Size([4, 1, 512, 2, 24, 24])
+                    assert x == 0, 'stop the training'
 
                 out[f'masks_{ti}'] = masks
                 out[f'logits_{ti}'] = logits
@@ -149,6 +171,7 @@ class XMemTrainer:
                 if it % self.save_checkpoint_interval == 0 and it != 0:
                     if self.logger is not None:
                         self.save_checkpoint(it)
+
 
         # Backward pass
         self.optimizer.zero_grad(set_to_none=True)

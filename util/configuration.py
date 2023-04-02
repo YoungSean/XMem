@@ -33,7 +33,7 @@ class Configuration():
         """
         # Stage 0, static images
         parser.add_argument('--s0_batch_size', default=4, type=int)  #16
-        parser.add_argument('--s0_iterations', default=112, type=int)  # 150000
+        parser.add_argument('--s0_iterations', default=320, type=int)  # 150000
         parser.add_argument('--s0_finetune', default=0, type=int)
         parser.add_argument('--s0_steps', nargs="*", default=[], type=int)
         parser.add_argument('--s0_lr', help='Initial learning rate', default=1e-5, type=float)

@@ -10,6 +10,8 @@ from simulation_util import imread_indexed
 from matplotlib import pyplot as plt
 import random
 
+from dataset.range_transform import im_normalization, im_mean
+
 
 import torch
 from torch.utils.data.dataset import Dataset
@@ -28,6 +30,7 @@ def load_object_rgbd(scene_folder, i):
     color_file = os.path.join(scene_folder, '%06d-color.jpg' % i)
     color = cv2.imread(color_file)
     color = np.ascontiguousarray(color[:, :, ::-1])
+
 
     depth_file = os.path.join(scene_folder, '%06d-depth.png' % i)
     depth = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH)
@@ -76,7 +79,7 @@ def split_image_with_mask(color, mask, ignore=None):
 def load_frame_rgbd(scene_folder, i):
     color_file = os.path.join(scene_folder, 'rgb_%05d.jpg' % i)
     color = cv2.imread(color_file)
-    color = np.ascontiguousarray(color[:, :, ::-1])
+    color = np.ascontiguousarray(color[:, :, ::-1])  # BGR to RGB
 
     depth_file = os.path.join(scene_folder, 'depth_%05d.png' % i)
     depth = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH)
@@ -87,12 +90,12 @@ def load_frame_rgbd(scene_folder, i):
     seg_file = os.path.join(scene_folder, 'segmentation_%05d.png' % i)
     label = imread_indexed(seg_file)
 
-    print('===================================')
-    print(color_file)
-    print(depth_file)
-    print(seg_file)
-    print(meta_file)
-    print('===================================')
+    # print('===================================')
+    # print(color_file)
+    # print(depth_file)
+    # print(seg_file)
+    # print(meta_file)
+    # print('===================================')
 
     return color, depth, label, meta
 
@@ -103,11 +106,11 @@ class FewSOLDataset(Dataset):
 
     num_frames: number of frames to be sampled from each scene. 4 frames: 3 samples + 1 query. change 3 to 4 to get 4 samples.
     """
-    def __init__(self, num_frames=4, max_num_obj=1):
+    def __init__(self, root_dir, num_frames=4, max_num_obj=1):
         self.num_frames = num_frames
         self.max_num_obj = max_num_obj
 
-        self.root_dir = '../FewSOL'
+        self.root_dir = root_dir + '/FewSOL'
         self.scene_dir = self.root_dir + '/google_scenes/train'
         self.obj_dir = self.root_dir + '/synthetic_objects'
 
@@ -118,11 +121,21 @@ class FewSOLDataset(Dataset):
         self.num = scene_num * scene_image_num
 
         # load mesh names
-        filename = '../data/synthetic_objects_folders.txt'
+        filename = root_dir + '/data/synthetic_objects_folders.txt'
         meshes = []
         with open(filename) as f:
             for line in f:
                 meshes.append(line.strip())
+
+        # Final transform without randomness
+        self.final_im_transform = transforms.Compose([
+            transforms.ToTensor(),
+            im_normalization,
+        ])
+
+        self.final_gt_transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
 
 
     def get_cur_scene(self, scene_dir, subdir, obj_dir, idx):
@@ -158,26 +171,26 @@ class FewSOLDataset(Dataset):
         # vis_color_and_mask(sub_images[2], sub_masks[2])
         query_img = color
         query_masks = sub_masks
-        cur_scene['query_img'] = query_img
+        cur_scene['query_img'] = self.final_im_transform(query_img)
         cur_scene['query_masks'] = query_masks
-        vis_color_and_mask(color, label)
+        # vis_color_and_mask(color, label)
 
         support_imgs = []
         support_masks = []
 
         cur_object_idx = np.random.randint(n)
-        cur_scene['query_mask'] = query_masks[cur_object_idx]
+        cur_scene['query_mask'] = self.final_gt_transform(query_masks[cur_object_idx])
         obj_name = obj_names[cur_object_idx]
         scene_folder = os.path.join(obj_dir, obj_name)
 
-        num_obj_imgs = np.random.randint(1,10)
+        num_obj_imgs = 2 #np.random.randint(1,10)
         # Define a list of numbers
         num_list = list(range(0, 9))
-        print("num_list: ", num_list)
+        # print("num_list: ", num_list)
 
         # Randomly pick 5 distinct numbers from the list
         random_numbers = random.sample(num_list, num_obj_imgs)
-        print("random_numbers: ", random_numbers)
+        # print("random_numbers: ", random_numbers)
         for i in random_numbers:
             color, depth, label, meta = load_object_rgbd(scene_folder, i)
             # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 1)
@@ -192,9 +205,14 @@ class FewSOLDataset(Dataset):
             #     vis_color_and_mask(sub_images[0], sub_masks[0])
             #     break
             sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-            support_imgs.append(sub_images[0])
-            support_masks.append(sub_masks[0])
+            this_img = self.final_im_transform(sub_images[0])
+            this_gt = self.final_gt_transform(sub_masks[0])
+            support_imgs.append(this_img)
+            support_masks.append(this_gt)
+            # print("the shape of this_img: ", this_img.shape)
+            # print("the shape of this_gt: ", this_gt.shape)
             # vis_color_and_mask(sub_images[0], sub_masks[0])
+            # vis_color_and_mask(this_img, this_gt)
             #
             # color, depth, label, meta = load_object_rgbd(scene_folder, 1)
             # sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
@@ -211,6 +229,8 @@ class FewSOLDataset(Dataset):
         cur_scene['support_imgs'] = support_imgs
         cur_scene['support_masks'] = support_masks
 
+
+
         return cur_scene
 
     def __getitem__(self, idx):
@@ -223,6 +243,7 @@ class FewSOLDataset(Dataset):
 
         # cur_scene = self.scenes[indices[0]]
         support_imgs = cur_scene['support_imgs']
+        # print("support_imgs type: ", type(support_imgs[0]))
         support_masks = cur_scene['support_masks']
         query_img = cur_scene['query_img']
         query_mask = cur_scene['query_mask']
@@ -246,28 +267,38 @@ class FewSOLDataset(Dataset):
 
         # print("cur_sample: ", cur_sample)
         # Convert the NumPy arrays to PyTorch tensors
-        tensor_list = [torch.permute(torch.from_numpy(arr), (2, 0, 1)) for arr in cur_sample['object_img']]
-        tensor_list.append(torch.permute(torch.from_numpy(cur_sample['query_img']), (2, 0, 1)))
+        # tensor_list = [torch.permute(torch.from_numpy(arr), (2, 0, 1)) for arr in cur_sample['object_img']]
+        # tensor_list.append(torch.permute(torch.from_numpy(cur_sample['query_img']), (2, 0, 1)))
+        tensor_list = [arr for arr in cur_sample['object_img']]
+        tensor_list.append(cur_sample['query_img'])
         merged_images = torch.stack(tensor_list, dim=0)
-        first_frame_gt = torch.from_numpy(cur_sample['object_mask'][0])
+        # first_frame_gt = cur_sample['object_mask'][0]
 
-        mask_list = [torch.unsqueeze(torch.from_numpy(arr), 0) for arr in cur_sample['object_mask']]
-        mask_list.append(torch.unsqueeze(torch.from_numpy(cur_sample['query_mask']), 0))
+        # mask_list = [torch.unsqueeze(torch.from_numpy(arr), 0) for arr in cur_sample['object_mask']]
+        mask_list = [arr for arr in cur_sample['object_mask']]
+        mask_list.append(cur_sample['query_mask'])
         cls_gt = torch.stack(mask_list, dim=0)
         cls_gt[cls_gt > 0] = 1
-        print("the values of cls_gt: ", torch.unique(cls_gt))
-        print("the shape of cls_gt: ", cls_gt.shape)
-        vis_color_and_mask(torch.permute(merged_images[0], (1, 2, 0)), cls_gt[0,0])
+        # print("the values of cls_gt: ", torch.unique(cls_gt))
+        # print("the shape of cls_gt: ", cls_gt.shape)
+        # vis_color_and_mask(torch.permute(merged_images[0], (1, 2, 0)), cls_gt[0,0])
         # vis_color_and_mask(torch.permute(merged_images[1], (1, 2, 0)), cls_gt[1, 0])
         # vis_color_and_mask(torch.permute(merged_images[2], (1, 2, 0)), cls_gt[2, 0])
-        vis_color_and_mask(torch.permute(merged_images[-1], (1, 2, 0)), cls_gt[-1, 0])
-        print("the shape of merged_images: ", merged_images.shape)
+        # vis_color_and_mask(torch.permute(merged_images[-1], (1, 2, 0)), cls_gt[-1, 0])
+        # print("the shape of merged_images: ", merged_images.shape)
+        # print("the shape of cls_gt: ", cls_gt.shape)
+        # print("the shape of cls_gt[:-1]: ", cls_gt[:-1,:,:,:].shape)
+
+        # last_frame_gt = cls_gt[-1, 0]
+        # print("the shape of last_frame_gt: ", last_frame_gt.shape)
+        # vis_color_and_mask(torch.permute(merged_images[-1], (1, 2, 0)), last_frame_gt)
+        # print("the shape of merged_images: ", merged_images.shape)
 
         data = {
-            'rgb': merged_images,  # (T, C, H, W) (3, 3, 384, 384)
-            'first_frame_gt': cls_gt[:-1], # get rid of the last frame, (T-1, 1, H, W) (2, 1, 384, 384)
+            'rgb': merged_images.float(),  # (T, C, H, W) (3, 3, 384, 384)
+            'first_frame_gt': cls_gt[:-1,:,:,:].long(), # get rid of the last frame, (T-1, 1, H, W) (2, 1, 384, 384)
             #first_frame_gt,  # (1, 1, H, W) (1, 1, 384, 384)
-            'cls_gt': cls_gt,  # (T, 1, H, W) (3, 1, 384, 384)
+            'cls_gt': cls_gt.long(),  # (T, 1, H, W) (3, 1, 384, 384)
             'selector': selector,
             'info': info
         }
@@ -283,7 +314,7 @@ class FewSOLDataset(Dataset):
 
 
 if __name__ == '__main__':
-    f_dataset = FewSOLDataset()
+    f_dataset = FewSOLDataset('..')
     # print(f_dataset.scenes[0]['support_imgs'][0].shape)
     f_dataset[1]
 

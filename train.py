@@ -12,6 +12,7 @@ import torch.distributed as distributed
 from model.trainer import XMemTrainer
 from dataset.static_dataset import StaticTransformDataset
 from dataset.vos_dataset import VOSDataset
+from dataset.fewSOL_dataset import FewSOLDataset
 
 from util.logger import TensorboardLogger
 from util.configuration import Configuration
@@ -58,7 +59,7 @@ for si, stage in enumerate(stages_to_perform):
     if config['exp_id'] != 'NULL':
         config['exp_id'] = config['exp_id']+'_s%s'%stages[:si+1]
 
-    config['single_object'] = (stage == '0')
+    config['single_object'] = False #(stage == '0')  just set False to load weights
 
     config['num_gpus'] = world_size
     if config['batch_size']//config['num_gpus']*config['num_gpus'] != config['batch_size']:
@@ -159,20 +160,24 @@ for si, stage in enumerate(stages_to_perform):
     max_skip_values = [10, 15, 5, 5]
 
     if stage == '0':
-        static_root = path.expanduser(config['static_root'])
-        # format: path, method (style of storing images), mutliplier
-        train_dataset = StaticTransformDataset(
-            [
-                (path.join(static_root, 'fss'), 0, 1),
-                (path.join(static_root, 'DUTS-TR'), 1, 1),
-                (path.join(static_root, 'DUTS-TE'), 1, 1),
-                (path.join(static_root, 'ecssd'), 1, 1),
-                (path.join(static_root, 'BIG_small'), 1, 5),
-                (path.join(static_root, 'HRSOD_small'), 1, 5),
-            ], num_frames=config['num_frames'])
-        train_sampler, train_loader = construct_loader(train_dataset)
-
-        print(f'Static dataset size: {len(train_dataset)}')
+        fewsol = FewSOLDataset('.')
+        train_sampler, train_loader = construct_loader(fewsol)
+        print(f'FewSOL dataset size: {len(fewsol)}')
+    # elif stage == '0':
+    #     static_root = path.expanduser(config['static_root'])
+    #     # format: path, method (style of storing images), mutliplier
+    #     train_dataset = StaticTransformDataset(
+    #         [
+    #             (path.join(static_root, 'fss'), 0, 1),
+    #             (path.join(static_root, 'DUTS-TR'), 1, 1),
+    #             (path.join(static_root, 'DUTS-TE'), 1, 1),
+    #             (path.join(static_root, 'ecssd'), 1, 1),
+    #             (path.join(static_root, 'BIG_small'), 1, 5),
+    #             (path.join(static_root, 'HRSOD_small'), 1, 5),
+    #         ], num_frames=config['num_frames'])
+    #     train_sampler, train_loader = construct_loader(train_dataset)
+    #
+    #     print(f'Static dataset size: {len(train_dataset)}')
     elif stage == '1':
         increase_skip_fraction = [0.1, 0.3, 0.8, 100]
         bl_root = path.join(path.expanduser(config['bl_root']))

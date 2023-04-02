@@ -63,11 +63,11 @@ class XMemTrainer:
 
         out = {}
         frames = data['rgb']
-        print("frame shape", frames.shape)
+        # print("frame shape", frames.shape)
         first_frame_gt = data['first_frame_gt'].float()
         b = frames.shape[0]
-        print("b shape", b)
-        print("num frames", self.num_frames)
+        # print("b shape", b)
+        # print("num frames", self.num_frames)
         num_filled_objects = [o.item() for o in data['info']['num_objects']]
         num_objects = first_frame_gt.shape[2]
         selector = data['selector'].unsqueeze(2).unsqueeze(2)
@@ -75,7 +75,7 @@ class XMemTrainer:
         with torch.cuda.amp.autocast(enabled=self.config['amp']):
             # image features never change, compute once
             key, shrinkage, selection, f16, f8, f4 = self.XMem('encode_key', frames)
-            print("f16", f16.shape)  # shape is (batch, time/frames, channel, height, width)  16 and 4 are btach sizes
+            # print("f16", f16.shape)  # shape is (batch, time/frames, channel, height, width)  16 and 4 are btach sizes
 
             filler_one = torch.zeros(1, dtype=torch.int64)
             hidden = torch.zeros((b, num_objects, self.config['hidden_dim'], *key.shape[-2:]))
@@ -85,7 +85,7 @@ class XMemTrainer:
             # print("f16 shape", f16.shape) # f16 torch.Size([4, 3, 1024, 24, 24])
             # print("first_frame_gt[:,0].shape", first_frame_gt[:,0].shape) # torch.Size([4, 1, 384, 384])
 
-            print("v16 shape", v16.shape) # torch.Size([16, 1, 512, 24, 24])
+            # print("v16 shape", v16.shape) # torch.Size([16, 1, 512, 24, 24])
             # print("v16 shape", v16.shape) # torch.Size([16, 1, 512, 24, 24])
             values = v16.unsqueeze(3) # add the time dimension  # torch.Size([16, 64, 3, 24, 24])
             # print("values shape", values.shape) # torch.Size([4, 1, 512, 1, 24, 24])
@@ -133,11 +133,12 @@ class XMemTrainer:
                 # No need to encode the last frame
                 if ti < (self.num_frames-1):
                     is_deep_update = np.random.rand() < self.deep_update_prob
+                    # replace masks with our ground truth  masks->first_frame_gt[:,ti]
                     v16, hidden = self.XMem('encode_value', frames[:,ti], f16[:,ti], hidden, masks, is_deep_update=is_deep_update)  # here we use the masks predicted by the model
                     values = torch.cat([values, v16.unsqueeze(3)], 3)
                     # print("ti", ti) # ti 1
                     # print("ti and values shape", values.shape) # ti and values shape torch.Size([4, 1, 512, 2, 24, 24])
-                    assert x == 0, 'stop the training'
+                    # assert x == 0, 'stop the training'
 
                 out[f'masks_{ti}'] = masks
                 out[f'logits_{ti}'] = logits

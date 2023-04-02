@@ -163,6 +163,7 @@ class FewSOLDataset(Dataset):
         scene_folder = os.path.join(scene_dir, subdir)
         index = idx % 7
         color, depth, label, meta = load_frame_rgbd(scene_folder, index)
+        color_file = os.path.join(scene_folder, 'rgb_%05d.jpg' % index)
         # plt.imshow(color)
         # plt.show()
 
@@ -231,7 +232,7 @@ class FewSOLDataset(Dataset):
 
 
 
-        return cur_scene
+        return cur_scene, color_file
 
     def __getitem__(self, idx):
         additional_objects = np.random.randint(self.max_num_obj)
@@ -239,7 +240,7 @@ class FewSOLDataset(Dataset):
 
         # scene folder
         subdir = self.subdirs[indices[0] // 7]
-        cur_scene = self.get_cur_scene(self.scene_dir, subdir, self.obj_dir, idx)
+        cur_scene, color_file = self.get_cur_scene(self.scene_dir, subdir, self.obj_dir, idx)
 
         # cur_scene = self.scenes[indices[0]]
         support_imgs = cur_scene['support_imgs']
@@ -258,7 +259,7 @@ class FewSOLDataset(Dataset):
         cur_sample['query_mask'] = query_mask #[cur_object_idx]
 
         info = {}
-        info['name'] = 0  # to be changed
+        info['name'] = color_file  # to be changed
         info['num_objects'] = 1  # to be changed
 
         # 1 if object exist, 0 otherwise
@@ -316,7 +317,7 @@ class FewSOLDataset(Dataset):
 if __name__ == '__main__':
     f_dataset = FewSOLDataset('..')
     # print(f_dataset.scenes[0]['support_imgs'][0].shape)
-    f_dataset[1]
+    print(f_dataset[1]['info'])
 
     # root_dir = '../FewSOL'
     # scene_dir = root_dir + '/google_scenes/train'

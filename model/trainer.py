@@ -134,7 +134,9 @@ class XMemTrainer:
                 if ti < (self.num_frames-1):
                     is_deep_update = np.random.rand() < self.deep_update_prob
                     # replace masks with our ground truth  masks->first_frame_gt[:,ti]
-                    v16, hidden = self.XMem('encode_value', frames[:,ti], f16[:,ti], hidden, masks, is_deep_update=is_deep_update)  # here we use the masks predicted by the model
+                    # print("masks shape", masks.shape) # torch.Size([4, 1, 384, 384])
+                    # print("first_frame_gt[:,ti].shape", first_frame_gt[:,ti].shape) # torch.Size([4, 1, 384, 384])
+                    v16, hidden = self.XMem('encode_value', frames[:,ti], f16[:,ti], hidden, first_frame_gt[:,ti], is_deep_update=is_deep_update)  # here we use the masks predicted by the model
                     values = torch.cat([values, v16.unsqueeze(3)], 3)
                     # print("ti", ti) # ti 1
                     # print("ti and values shape", values.shape) # ti and values shape torch.Size([4, 1, 512, 2, 24, 24])

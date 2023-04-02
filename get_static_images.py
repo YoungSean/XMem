@@ -27,4 +27,4 @@ train_dataset = StaticTransformDataset(
 
 print(train_dataset)
 first_sample= train_dataset[0]
-print(first_sample)
+print(first_sample['info'])

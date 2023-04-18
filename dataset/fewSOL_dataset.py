@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 from os import path
 import time
 import json
@@ -69,7 +70,7 @@ def split_image_with_mask(color, mask, ignore=None):
         sub_mask[temp_mask==0] = 0
         sub_images.append(sub_image)
         sub_masks.append(sub_mask)
-        # print("sub mask: ", np.unique(sub_mask))
+
 
         # visualize the image and its mask
         # vis_color_and_mask(sub_image, sub_mask)
@@ -117,7 +118,7 @@ class FewSOLDataset(Dataset):
         self.subdirs = sorted(os.listdir(self.scene_dir))
         scene_num = len(self.subdirs) # number of scenes
         scene_image_num = 7 # number of images in each scene
-        print(self.subdirs)
+        # print(self.subdirs)
         self.num = scene_num * scene_image_num
 
         # load mesh names
@@ -158,6 +159,7 @@ class FewSOLDataset(Dataset):
             obj_names.append(obj_name)
         # print(obj_names)
         n = len(obj_names)
+        # print('number of objects: ', n)
 
         # load one image
         scene_folder = os.path.join(scene_dir, subdir)
@@ -179,12 +181,14 @@ class FewSOLDataset(Dataset):
         support_imgs = []
         support_masks = []
 
-        cur_object_idx = np.random.randint(n)
+        k = len(query_masks)  # choose one object as query
+        cur_object_idx = np.random.randint(k)
         cur_scene['query_mask'] = self.final_gt_transform(query_masks[cur_object_idx])
+
         obj_name = obj_names[cur_object_idx]
         scene_folder = os.path.join(obj_dir, obj_name)
 
-        num_obj_imgs = 2 #np.random.randint(1,10)
+        num_obj_imgs = 5 #np.random.randint(1,10)
         # Define a list of numbers
         num_list = list(range(0, 9))
         # print("num_list: ", num_list)
@@ -242,9 +246,7 @@ class FewSOLDataset(Dataset):
         subdir = self.subdirs[indices[0] // 7]
         cur_scene, color_file = self.get_cur_scene(self.scene_dir, subdir, self.obj_dir, idx)
 
-        # cur_scene = self.scenes[indices[0]]
         support_imgs = cur_scene['support_imgs']
-        # print("support_imgs type: ", type(support_imgs[0]))
         support_masks = cur_scene['support_masks']
         query_img = cur_scene['query_img']
         query_mask = cur_scene['query_mask']
@@ -317,7 +319,8 @@ class FewSOLDataset(Dataset):
 if __name__ == '__main__':
     f_dataset = FewSOLDataset('..')
     # print(f_dataset.scenes[0]['support_imgs'][0].shape)
-    print(f_dataset[1]['info'])
+    print(f_dataset[228949]['info'])
+    print('the length of the dataset: ', len(f_dataset))
 
     # root_dir = '../FewSOL'
     # scene_dir = root_dir + '/google_scenes/train'

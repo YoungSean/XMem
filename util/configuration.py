@@ -33,12 +33,12 @@ class Configuration():
         """
         # Stage 0, static images
         parser.add_argument('--s0_batch_size', default=4, type=int)  #16
-        parser.add_argument('--s0_iterations', default=320, type=int)  # 150000
+        parser.add_argument('--s0_iterations', default=2000, type=int)  # 150000
         parser.add_argument('--s0_finetune', default=0, type=int)
         parser.add_argument('--s0_steps', nargs="*", default=[], type=int)
         parser.add_argument('--s0_lr', help='Initial learning rate', default=1e-5, type=float)
-        parser.add_argument('--s0_num_ref_frames', default=2, type=int)
-        parser.add_argument('--s0_num_frames', default=3, type=int)
+        parser.add_argument('--s0_num_ref_frames', default=5, type=int)   #2
+        parser.add_argument('--s0_num_frames', default=6, type=int)  #3
         parser.add_argument('--s0_start_warm', default=20000, type=int)
         parser.add_argument('--s0_end_warm', default=70000, type=int)
 
@@ -86,10 +86,10 @@ class Configuration():
         parser.add_argument('--load_checkpoint', help='Path to the checkpoint file, including network, optimizer and such')
 
         # Logging information
-        parser.add_argument('--log_text_interval', default=100, type=int) # 100
-        parser.add_argument('--log_image_interval', default=200, type=int)  #1000
-        parser.add_argument('--save_network_interval', default=25000, type=int)
-        parser.add_argument('--save_checkpoint_interval', default=50000, type=int)
+        parser.add_argument('--log_text_interval', default=200, type=int) # 100
+        parser.add_argument('--log_image_interval', default=500, type=int)  #1000
+        parser.add_argument('--save_network_interval', default=7500, type=int) # 25000
+        parser.add_argument('--save_checkpoint_interval', default=1500, type=int)  # 50000
         parser.add_argument('--exp_id', help='Experiment UNIQUE id, use NULL to disable logging to tensorboard', default='NULL')
         parser.add_argument('--debug', help='Debug mode which logs information more often', action='store_true')
 

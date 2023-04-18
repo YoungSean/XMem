@@ -63,6 +63,9 @@ class XMemTrainer:
 
         out = {}
         frames = data['rgb']
+        # b, t = frames.shape[:2]
+        # self.num_frames = t
+        # self.num_ref_frames = t - 1
         # print("frame shape", frames.shape)
         first_frame_gt = data['first_frame_gt'].float()
         b = frames.shape[0]

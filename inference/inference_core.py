@@ -46,7 +46,7 @@ class InferenceCore:
         image, self.pad = pad_divide_by(image, 16)
         image = image.unsqueeze(0) # add the batch dimension
 
-        few_shot_size = 3 # 1
+        few_shot_size = 5 # 1
         # is_mem_frame = ((self.curr_ti - self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
         is_mem_frame = (self.curr_ti < few_shot_size) or ((self.curr_ti-self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
         # need_segment = (self.curr_ti > 0) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))

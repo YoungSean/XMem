@@ -60,16 +60,16 @@ print("all coco categories")
 print(coco.getCatIds()[:5])
 
 # get metadata of coco categories
-print(coco.loadCats(coco.getCatIds())[:5])
-print(coco.loadCats(5))
+# print(coco.loadCats(coco.getCatIds())[:5])
+# print(coco.loadCats(5))
 
 # display COCO categories and supercategories
 cats = coco.loadCats(coco.getCatIds())
 nms=[cat['name'] for cat in cats]
-print('COCO categories: \n{}\n'.format(' '.join(nms)))
+# print('COCO categories: \n{}\n'.format(' '.join(nms)))
 
 nms = set([cat['supercategory'] for cat in cats])
-print('COCO supercategories: \n{}'.format(' '.join(nms)))
+# print('COCO supercategories: \n{}'.format(' '.join(nms)))
 
 # get all images containing given categories, select one at random
 # catIds = coco.getCatIds(catNms=['gepa_bio_und_fair_kraeuterteemischung'])
@@ -222,12 +222,8 @@ light_imgIds = cat_to_images(light_coco, my_catIds)
 # imgID_to_image(clutter_coco, imgIds[0])
 print(len(clutter_imgIds))
 
-# for i in range(0, 90, 30):
-#     display_image(clutter_coco, clutter_imgIds[i])
 
 # display_image(coco, train_imgIds[30])
-# display_image(random_coco, random_imgIds[36])
-# display_image(light_coco, light_imgIds[0])
 
 # build object bank
 object_bank = {}
@@ -239,34 +235,36 @@ for i in range(1, 61):
     cur_idx = [i for i in range(0, cur_len, cur_len//5)]
     sample_imgIds = [imgIds[i] for i in cur_idx]
     object_bank[i] = sample_imgIds
-    # if cur_len == 60:
-    #     print("cur_idx: {}".format(cur_idx))
-    #     print("sample_imgIds: {}".format(sample_imgIds))
-
-res_imgs = []
-res_masks = []
 
 
-for i in object_bank[6]:
-    sub_imgs, sub_masks = image_to_sub_images(coco, i)
-    res_imgs += sub_imgs
-    res_masks += sub_masks
+def catID_to_support_set(coco, cat_id, object_bank):
+    res_imgs = []
+    res_masks = []
+    for i in object_bank[cat_id]:
+        sub_imgs, sub_masks = image_to_sub_images(coco, i)
+        res_imgs += sub_imgs
+        res_masks += sub_masks
+    return res_imgs, res_masks
 
-# sub_imgs, sub_masks = image_to_sub_images(coco, object_bank[6][-1])
-print("number of sub images: ", len(res_imgs))
-print("the shape of the first sub image: ", res_imgs[0].shape)
-query_img, query_mask = imgID_to_image(clutter_coco, clutter_imgIds[0])
-query_img = np.array(query_img).astype(int)
-print("query img shape: ", query_img.shape)
+def catID_to_clutter_query(clutter_coco, cat_ids):
+    clutter_imgIds = cat_to_images(clutter_coco, cat_ids)
+    print("number of clutter images: ", len(clutter_imgIds))
+    query_img, query_mask = imgID_to_image(clutter_coco, clutter_imgIds[12])
+    query_img = np.array(query_img).astype(int)
+    return query_img, query_mask
 
+res_imgs, res_masks = catID_to_support_set(coco, 12, object_bank)
+query_img, query_mask = catID_to_clutter_query(clutter_coco, [12])
+
+print("number of res images: ", len(res_imgs))
 num_support_imgs = 5
 # Define a list of numbers
 num_list = list(range(0, len(res_imgs)))
 # print("num_list: ", num_list)
 
 # Randomly pick 5 distinct numbers from the list
-# random_numbers = random.sample(num_list, num_support_imgs)
-random_numbers = [4, 5, 7, 9, 14]
+random_numbers = random.sample(num_list, num_support_imgs)
+# random_numbers = [0, 1, 2, 3, 4]
 sup_imgs = [res_imgs[i] for i in random_numbers]
 sup_masks = [res_masks[i] for i in random_numbers]
 print("number of support images: ", len(sup_imgs))
@@ -320,16 +318,7 @@ config = {
 }
 
 network = XMem(config, './saves/XMem.pth').eval().to(device)
-# print(network)
-
-# video_name = 'video.mp4'
-# mask_name = 'first_frame.png'
-
-
-# from base64 import b64encode
-# data_url = "data:video/mp4;base64," + b64encode(open(video_name, 'rb').read()).decode()
-# import IPython.display
-# IPython.display.Image('first_frame.png', width=400)
+# network = XMem(config, './saves/Apr18_14.21.17_retrain_stage0_only_s0/Apr18_14.21.17_retrain_stage0_only_s0_30625.pth').eval().to(device)
 
 mask = first_mask #np.array(Image.open(mask_name))
 # print(np.unique(mask))
@@ -356,7 +345,7 @@ with torch.cuda.amp.autocast(enabled=True):
     for frame in frames:
         # convert numpy array to pytorch tensor format
         frame_torch, _ = image_to_torch(frame, device=device)
-        if current_frame_index <= 2:
+        if current_frame_index <= 4:
         # if current_frame_index == 0:
             # initialize with the mask
             mask_torch = index_numpy_to_one_hot_torch(masks[current_frame_index], num_objects + 1).to(device)
@@ -372,7 +361,7 @@ with torch.cuda.amp.autocast(enabled=True):
 
         # if current_frame_index % visualize_every == 0:
         print("frame: ", frame.shape)
-        visualization = overlay_davis(frame, prediction)
+        visualization = overlay_davis(frame, prediction, alpha=0.5, fade=False)
 
         imgplot = plt.imshow(visualization.astype(np.uint8))
         plt.axis("off")

@@ -46,11 +46,11 @@ class InferenceCore:
         image, self.pad = pad_divide_by(image, 16)
         image = image.unsqueeze(0) # add the batch dimension
 
-        few_shot_size = 1
-        is_mem_frame = ((self.curr_ti - self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
-        # is_mem_frame = (self.curr_ti < few_shot_size) or ((self.curr_ti-self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
-        need_segment = (self.curr_ti > 0) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
-        # need_segment = (self.curr_ti >= few_shot_size) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
+        few_shot_size = 3 # 1
+        # is_mem_frame = ((self.curr_ti - self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
+        is_mem_frame = (self.curr_ti < few_shot_size) or ((self.curr_ti-self.last_mem_ti >= self.mem_every) or (mask is not None)) and (not end)
+        # need_segment = (self.curr_ti > 0) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
+        need_segment = (self.curr_ti >= few_shot_size) and ((valid_labels is None) or (len(self.all_labels) != len(valid_labels)))
         is_deep_update = (self.curr_ti < few_shot_size) or  (
             (self.deep_update_sync and is_mem_frame) or  # synchronized
             (not self.deep_update_sync and self.curr_ti-self.last_deep_update_ti >= self.deep_update_every) # no-sync

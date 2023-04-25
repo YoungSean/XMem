@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import random
 
 # json_path = "./dataset/d2s/d2s_annotations_v1.1/annotations/D2S_training.json"
 img_path = "./dataset/d2s/d2s_images_v1/images"
@@ -129,8 +130,8 @@ def vis_color_and_mask(image, mask):
     plt.show()
 
 def split_image_with_mask(color, mask, ignore=None):
-    plt.imshow(color)
-    plt.show()
+    # plt.imshow(color)
+    # plt.show()
     mask_ids = np.sort(np.unique(mask))
     color = np.array(color).astype(int)
     # print("sorted mask ids: ", mask_ids)
@@ -151,7 +152,7 @@ def split_image_with_mask(color, mask, ignore=None):
         sub_masks.append(sub_mask)
         # print("unique values in sub mask: ", np.unique(sub_mask))
         # visualize the image and its mask
-    vis_color_and_mask(sub_images[0], sub_masks[0])
+    # vis_color_and_mask(sub_images[0], sub_masks[0])
     return sub_images, sub_masks
 
 def imgID_to_sample(coco, img_id):
@@ -179,26 +180,26 @@ def imgID_to_sample(coco, img_id):
         x1, y1, x2, y2 = x, y, int(x + w), int(y + h)
         draw.rectangle((x1, y1, x2, y2))
         draw.text((x1, y1), coco_classes[target["category_id"]])
-    fig = plt.figure()
-    fig.add_subplot(1, 2, 1)
-    plt.imshow(img)
-    plt.axis("off")
+    # fig = plt.figure()
+    # fig.add_subplot(1, 2, 1)
+    # plt.imshow(img)
+    # plt.axis("off")
     coco.showAnns(targets)
 
-    fig.add_subplot(1, 2, 2)
+    # fig.add_subplot(1, 2, 2)
     mask = coco.annToMask(targets[0])
     for i in range(1, len(targets)):
         mask += coco.annToMask(targets[i]) * (i + 1)
-    print("image id: ", img_id)
+    # print("image id: ", img_id)
     first_mask = mask[0]
     # if img_id == 200 or img_id == 201 or img_id == 202:
     masks.append(mask)
     # print(mask)
     # print(type(mask))
-    # plt.subplots(122)
-    plt.imshow(mask)
-    plt.axis("off")
-    plt.show()
+
+    # plt.imshow(mask)
+    # plt.axis("off")
+    # plt.show()
 
     return raw_img, mask
 
@@ -208,6 +209,10 @@ def image_to_sub_images(coco, img_id):
     sub_imgs, sub_masks = split_image_with_mask(color, mask, ignore=[0])
     return sub_imgs, sub_masks
 
+def imgID_to_image(coco, img_id):
+    # display_image(coco, i)
+    color, mask = imgID_to_sample(coco, img_id)
+    return color, mask
 
 my_catIds = [6]
 clutter_imgIds = cat_to_images(clutter_coco, my_catIds)
@@ -242,15 +247,138 @@ res_imgs = []
 res_masks = []
 
 
-# for i in object_bank[6]:
-#     sub_imgs, sub_masks = image_to_sub_images(coco, i)
-#     res_imgs += sub_imgs
-#     res_masks += sub_masks
+for i in object_bank[6]:
+    sub_imgs, sub_masks = image_to_sub_images(coco, i)
+    res_imgs += sub_imgs
+    res_masks += sub_masks
 
-image_to_sub_images(coco, object_bank[6][-1])
+# sub_imgs, sub_masks = image_to_sub_images(coco, object_bank[6][-1])
+print("number of sub images: ", len(res_imgs))
+print("the shape of the first sub image: ", res_imgs[0].shape)
+query_img, query_mask = imgID_to_image(clutter_coco, clutter_imgIds[0])
+query_img = np.array(query_img).astype(int)
+print("query img shape: ", query_img.shape)
 
-# print("number of sub images: ", len(res_imgs))
-# print("number of sub masks: ", len(res_masks))
+num_support_imgs = 5
+# Define a list of numbers
+num_list = list(range(0, len(res_imgs)))
+# print("num_list: ", num_list)
 
+# Randomly pick 5 distinct numbers from the list
+# random_numbers = random.sample(num_list, num_support_imgs)
+random_numbers = [4, 5, 7, 9, 14]
+sup_imgs = [res_imgs[i] for i in random_numbers]
+sup_masks = [res_masks[i] for i in random_numbers]
+print("number of support images: ", len(sup_imgs))
+
+first_mask = sup_masks[0]
+print("first mask shape: ", first_mask.shape)
+frames = []
+for i in range(len(sup_imgs)):
+    frames.append(sup_imgs[i])
+frames.append(query_img)
+
+print("number of frames: ", len(frames))
+
+
+import os
+from os import path
+from argparse import ArgumentParser
+import shutil
+
+import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+import numpy as np
+from PIL import Image
+
+from inference.data.test_datasets import LongTestDataset, DAVISTestDataset, YouTubeVOSTestDataset
+from inference.data.mask_mapper import MaskMapper
+from model.network import XMem
+from inference.inference_core import InferenceCore
+
+from progressbar import progressbar
+
+torch.set_grad_enabled(False)
+if torch.cuda.is_available():
+  print('Using GPU')
+  device = 'cuda'
+else:
+  print('CUDA not available. Please connect to a GPU instance if possible.')
+  device = 'cpu'
+# default configuration
+config = {
+    'top_k': 30,
+    'mem_every': 5,
+    'deep_update_every': -1,
+    'enable_long_term': True,
+    'enable_long_term_count_usage': True,
+    'num_prototypes': 128,
+    'min_mid_term_frames': 5,
+    'max_mid_term_frames': 10,
+    'max_long_term_elements': 10000,
+}
+
+network = XMem(config, './saves/XMem.pth').eval().to(device)
+# print(network)
+
+# video_name = 'video.mp4'
+# mask_name = 'first_frame.png'
+
+
+# from base64 import b64encode
+# data_url = "data:video/mp4;base64," + b64encode(open(video_name, 'rb').read()).decode()
+# import IPython.display
+# IPython.display.Image('first_frame.png', width=400)
+
+mask = first_mask #np.array(Image.open(mask_name))
+# print(np.unique(mask))
+print("the unqiue values in the mask: ", np.unique(mask))
+num_objects = 1 #len(np.unique(mask)) - 1
+masks = sup_masks
+import cv2
+from inference.interact.interactive_utils import image_to_torch, index_numpy_to_one_hot_torch, torch_prob_to_numpy_mask, overlay_davis
+
+torch.cuda.empty_cache()
+
+processor = InferenceCore(network, config=config)
+processor.set_all_labels(range(1, num_objects+1)) # consecutive labels
+# cap = cv2.VideoCapture(video_name)
+
+# You can change these two numbers
+# frames_to_propagate = 40
+visualize_every = 20
+
+current_frame_index = 0
+
+import matplotlib.pyplot as plt
+with torch.cuda.amp.autocast(enabled=True):
+    for frame in frames:
+        # convert numpy array to pytorch tensor format
+        frame_torch, _ = image_to_torch(frame, device=device)
+        if current_frame_index <= 2:
+        # if current_frame_index == 0:
+            # initialize with the mask
+            mask_torch = index_numpy_to_one_hot_torch(masks[current_frame_index], num_objects + 1).to(device)
+            # mask_torch = index_numpy_to_one_hot_torch(mask, num_objects + 1).to(device)
+            # the background mask is not fed into the model
+            prediction = processor.step(frame_torch, mask_torch[1:])
+        else:
+            # propagate only
+            prediction = processor.step(frame_torch)
+
+        # argmax, convert to numpy
+        prediction = torch_prob_to_numpy_mask(prediction)
+
+        # if current_frame_index % visualize_every == 0:
+        print("frame: ", frame.shape)
+        visualization = overlay_davis(frame, prediction)
+
+        imgplot = plt.imshow(visualization.astype(np.uint8))
+        plt.axis("off")
+        plt.show()
+
+        current_frame_index += 1
+#
 
 

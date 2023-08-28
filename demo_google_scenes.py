@@ -7,6 +7,7 @@ import scipy.io
 import numpy as np
 from simulation_util import imread_indexed
 from matplotlib import pyplot as plt
+from PIL import Image
 
 
 def load_object_rgbd(scene_folder, i):
@@ -37,7 +38,7 @@ def vis_color_and_mask(image, mask):
 
 def split_image_with_mask(color, mask, ignore=None):
     mask_ids = np.sort(np.unique(mask))
-    print("sorted mask ids: ", mask_ids)
+    # print("sorted mask ids: ", mask_ids)
     sub_images = []
     sub_masks = []
     for i in mask_ids:
@@ -104,7 +105,7 @@ def get_cur_scene(scene_dir, subdir):
 
     # load one image
     scene_folder = os.path.join(scene_dir, subdirs[i])
-    index = np.random.randint(0, 7)
+    index = 1 #np.random.randint(0, 7)
     color, depth, label, meta = load_frame_rgbd(scene_folder, index)
     # plt.imshow(color)
     # plt.show()
@@ -116,7 +117,7 @@ def get_cur_scene(scene_dir, subdir):
     query_masks = sub_masks
     cur_scene['query_img'] = query_img
     cur_scene['query_masks'] = query_masks
-    vis_color_and_mask(color, label)
+    # vis_color_and_mask(color, label)
 
     # visualization
     # fig = plt.figure()
@@ -129,7 +130,7 @@ def get_cur_scene(scene_dir, subdir):
     # ax = fig.add_subplot(1+n, 3, 3)
     # plt.title('label')
     # plt.imshow(label)
-    print("unique nums: ", np.unique(label))
+    # print("unique nums: ", np.unique(label))
 
     support_imgs = []
     support_masks = []
@@ -137,40 +138,21 @@ def get_cur_scene(scene_dir, subdir):
     for j in range(n):
         obj_name = obj_names[j]
         scene_folder = os.path.join(obj_dir, obj_name)
-        color, depth, label, meta = load_object_rgbd(scene_folder, 0)
-        # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 1)
-        # plt.imshow(color)
-        # plt.imshow(label)
-        # print("unique nums of obj1 label: ", np.unique(label))
-        # mask = (label > 0).astype(int)
-        # print(mask)
-        # print("unique nums of obj1 mask: ", np.unique(mask))
-        # if j==2:
-        #     sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-        #     vis_color_and_mask(sub_images[0], sub_masks[0])
-        #     break
-        sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-        support_imgs.append(sub_images[0])
-        support_masks.append(sub_masks[0])
-        vis_color_and_mask(sub_images[0], sub_masks[0])
 
-        color, depth, label, meta = load_object_rgbd(scene_folder, 1)
-        # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 2)
-        # plt.imshow(color)
-        # plt.imshow(label)
-        sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-        support_imgs.append(sub_images[0])
-        support_masks.append(sub_masks[0])
-        vis_color_and_mask(sub_images[0], sub_masks[0])
+        for template_index in range(9):
+            color, depth, label, meta = load_object_rgbd(scene_folder, template_index)
+            sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
+            support_imgs.append(sub_images[0])
+            support_masks.append(sub_masks[0])
+            # vis_color_and_mask(sub_images[0], sub_masks[0])
+            if obj_name.strip() == 'Elephant':
+                print("Elephant: ", template_index)
+                vis_color_and_mask(sub_images[0], sub_masks[0])
+                color = sub_images[0]
+                image = Image.fromarray(color)
+                image.save(f'only_objects/Elephant_{template_index}.png')
+                break
 
-        color, depth, label, meta = load_object_rgbd(scene_folder, 2)
-        # ax = fig.add_subplot(1+n, 3, 3 + j*3 + 3)
-        # plt.imshow(color)
-        # plt.imshow(label)
-        sub_images, sub_masks = split_image_with_mask(color, label, ignore=[0])
-        support_imgs.append(sub_images[0])
-        support_masks.append(sub_masks[0])
-        vis_color_and_mask(sub_images[0], sub_masks[0])
 
     cur_scene['support_imgs'] = support_imgs
     cur_scene['support_masks'] = support_masks
@@ -178,27 +160,28 @@ def get_cur_scene(scene_dir, subdir):
     return cur_scene
 
 if __name__ == '__main__':
-
     root_dir = './FewSOL'
+    # scene_dir = root_dir + '/google_scenes/train'
     scene_dir = root_dir + '/google_scenes/train'
     obj_dir = root_dir + '/synthetic_objects'
     
     subdirs = sorted(os.listdir(scene_dir))
     num = len(subdirs)
-    print(subdirs)
-
-    # load mesh names
-    filename = './data/synthetic_objects_folders.txt'
-    meshes = []
-    with open(filename) as f:
-        for line in f:
-            meshes.append(line.strip())
-
-    scenes = []
+    print(num)
+    # print(subdirs)
+    #
+    # # load mesh names
+    # filename = './data/synthetic_objects_folders.txt'
+    # meshes = []
+    # with open(filename) as f:
+    #     for line in f:
+    #         meshes.append(line.strip())
+    #
+    # scenes = []
     # for each scene
-    for i in range(num):
-        cur_scene = get_cur_scene(scene_dir, subdirs[i])
-        # plt.show()
-        scenes.append(cur_scene)
+    # for i in range(num):
+    #     cur_scene = get_cur_scene(scene_dir, subdirs[i])
+    #     # plt.show()
+    #     scenes.append(cur_scene)
 
 

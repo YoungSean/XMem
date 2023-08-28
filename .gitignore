@@ -6,6 +6,7 @@ output/
 workspace/
 run*.sh
 FewSOL/
+only_objects/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -137,3 +138,4 @@ dmypy.json
 .pyre/
 /FewSOL/google_scenes_demo/
 /dataset/d2s/
+/only_objects/

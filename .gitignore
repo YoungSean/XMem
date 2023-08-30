@@ -15,6 +15,7 @@ dataset/d2s/
 # C extensions
 *.so
 
+/LoFTR/*
 # Distribution / packaging
 .Python
 build/
@@ -139,3 +140,4 @@ dmypy.json
 /FewSOL/google_scenes_demo/
 /dataset/d2s/
 /only_objects/
+/LoFTR/
